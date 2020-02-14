@@ -41,6 +41,7 @@ export default class Blog544 {
 
   constructor(meta, options) {
     //@TODO
+    this.globalUser = [];
     this.meta = meta;
     this.options = options;
     this.validator = new Validator(meta);
@@ -60,7 +61,23 @@ export default class Blog544 {
    * return id of newly created object 
    */
   async create(category, createSpecs) {
+    
     const obj = this.validator.validate(category, 'create', createSpecs);
+
+    const results = await this.find(category, {id:createSpecs['id']});
+    if(results.length > 0){
+      var value = createSpecs['id'];
+      const msg = 'object with id ${value} already exists for ${category}';
+      throw [new BlogError('EXISTS', msg)];
+    }
+    else if(category == 'users' && obj != undefined && obj != null && createSpecs != null){
+      var jsonContent = JSON.stringify(createSpecs);
+      var jsonObj = JSON.parse(jsonContent);
+      this.globalUser.push(jsonObj);
+      if(!this.options.noLoad){
+        console.log(createSpecs['id']);
+      }
+    }
     //@TODO
   }
 
@@ -69,10 +86,30 @@ export default class Blog544 {
    *  list if no matching objects).  _count defaults to DEFAULT_COUNT.
    */
   async find(category, findSpecs={}) {
+    var count = 0;
+    var findInfo;
     const obj = this.validator.validate(category, 'find', findSpecs);
+    if(obj != undefined && obj != null){
+      if(isEmpty(findSpecs) && category == 'users'){
+        findInfo = this.globalUser.map( function(type){
+          var info = {
+                      "id" : type.id
+                      }
+          return info;
+        });
+      }
+      else{
+        findInfo = this.globalUser.filter(d => d.id === findSpecs.id);
+      }
+      // if(findInfo != undefined && findInfo != null && findInfo.length > 0){
+      //   console.log(findInfo);
+      // } 
+      return findInfo;
+    }
     //@TODO
     return [];
   }
+
 
   /** Remove up to one blog object from category with id == rmSpecs.id. */
   async remove(category, rmSpecs) {
@@ -85,9 +122,47 @@ export default class Blog544 {
    */
   async update(category, updateSpecs) {
     const obj = this.validator.validate(category, 'update', updateSpecs);
-    //@TODO
+    if(obj != undefined && obj != null){
+      // for(var i = 0; i < this.globalUser.length; i++){
+      //   if(this.globalUser[i].id == updateSpecs['id']){
+          // for(var key in updateSpecs){
+          //   if(key != 'id'){
+          //     switch(key){
+          //       case 'firstName':
+          //         this.globalUser[i].firstName = updateSpecs['firstName'];
+          //         break;
+          //       case 'lastName' :
+          //         this.globalUser[i].lastName = updateSpecs['lastName'];
+          //         break;
+          //       case 'roles':
+          //         this.globalUser[i].roles = updateSpecs['roles'];
+          //         break;
+          //       case 'updateTime':
+          //         this.globalUser[i].updateTime = updateSpecs['updateTime'];
+          //         break;
+          //     }
+          //     //this.globalUser[i].key = updateSpecs[key];
+          //   }
+          // }
+      //     break;
+      //   }
+      // }
+      //var findInfo = await this.find(category, {id:updateSpecs['id']});
+      var index = this.globalUser.findIndex(function(item, i){
+        return item.id === updateSpecs['id'];
+      })
+      Object.keys(updateSpecs).forEach(key=> this.globalUser[index].key = updateSpecs[key]);
+      //@TODO
+    }
   }
-  
 }
+  
 
+function isEmpty(obj) {
+  for(var key in obj) {
+      if(obj.hasOwnProperty(key))
+          return false;
+  }
+  return true;
+}
 //You can add code here and refer to it from any methods in Blog544.
