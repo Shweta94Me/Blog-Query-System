@@ -67,49 +67,41 @@ export default class Blog544 {
     const obj = this.validator.validate(category, 'create', createSpecs);
     let results;
     if(category === 'users'){
-      results = this.globalUser.filter(d => d.id === createSpecs.id);
+      results = this.globalUser.filter(d => d.id === obj.id);
     }
 
     if(results != null && results.length > 0){
-      const value = createSpecs['id'];
-      const msg = 'object with id ' + value + ' already exists for '+category;
-      throw [new BlogError('EXISTS', msg)];
+      throw [new BlogError('EXISTS', 'object with id ' + obj.id + ' already exists for '+category)];
     }
     else if(obj !== undefined && obj !== null && createSpecs != null){
-      if(category === 'articles' || category === 'comments'){
-        createSpecs.id = ((Math.random() * 100) + 1).toFixed(3);
-      }
-      let jsonContent = JSON.stringify(createSpecs);
-      let jsonObj = JSON.parse(jsonContent);
       if(!this.options.noLoad) {
         switch (category) {
           case 'users':
-            this.globalUser.push(jsonObj);
+            this.globalUser.push(obj);
             break;
           case 'articles':
-            if(checkAuthorExist(this, category, jsonObj)){
-              this.globalArticle.push(jsonObj);
+            if(checkAuthorExist(this, category, obj)){
+              obj.id = randomIDGenerator();
+              this.globalArticle.push(obj);
             }
             else {
-              const msg = 'invalid id '+ jsonObj.authorId  + ' for users for create articles';
-              throw [new BlogError('BAD_ID', msg)];
+              throw [new BlogError('BAD_ID', 'invalid id '+ obj.authorId  + ' for users for create articles')];
             }
             break;
           case 'comments':
-            if(!checkAuthorExist(this, category, jsonObj)){
-              const msg = 'invalid id '+ jsonObj.commenterId  + ' for user for create comments';
-              throw [new BlogError('BAD_ID', msg)];
+            if(!checkAuthorExist(this, category, obj)){
+              throw [new BlogError('BAD_ID', 'invalid id '+ obj.commenterId  + ' for user for create comments')];
             }
-            else if(!checkArticleExist(this, jsonObj)){
-              const msg = 'invalid id '+ jsonObj.articleId  + ' for article for create comments';
-              throw [new BlogError('BAD_ID', msg)];
+            else if(!checkArticleExist(this, obj)){
+              throw [new BlogError('BAD_ID', 'invalid id '+ obj.articleId  + ' for article for create comments')];
             }
             else {
-              this.globalComments.push(jsonObj);
+              obj.id = randomIDGenerator();
+              this.globalComments.push(obj);
             }
             break;
         }
-        return createSpecs['id'];
+        return obj.id;
       }
     }
     //@TODO
@@ -137,16 +129,26 @@ export default class Blog544 {
           findInfo = dataType.filter(function (e) {
             return e[key[0]] === findSpecs[key[0]];
           });//for eg. find users id=betty or find users id=betty _count=3
+          if(!key.includes('id')){
+            console.log(key[0] +' : '+ findInfo.length);
+          }
         }
         else if(key.includes('keywords')){
-          dataType.forEach(function (article) {
-            if(findSpecs.keywords.every(x => article.keywords.includes(x))){
-              findInfo.push(article);
-            }
+          let arr = [], arr1 = [];
+          findSpecs.keywords.forEach(function (val) {
+            let arr2 = dataType.filter(article => article.keywords.includes(val));
+            arr.push(arr2);
+            arr1.push(arr2.length);
           });
+          findInfo = arr.reduce((join, current) => join.filter(el => current.includes(el)));
+
+          arr1.forEach(val => console.log('keywords: '+ val));
         }
         if(hasCountProp(findSpecs)){
           findInfo = findInfo.slice(0, findSpecs._count);
+        }
+        else {
+          findInfo = findInfo.slice(0, DEFAULT_COUNT);
         }
       }
       if(findInfo.length === 0 && (isEmpty(findSpecs) || ((Object.keys(findSpecs)).length === 1 && (Object.keys(findSpecs)).includes('_count')))){
@@ -192,7 +194,8 @@ export default class Blog544 {
         return item.id === updateSpecs['id'];
       });
       if(index !== -1){
-        Object.keys(updateSpecs).forEach(key=> dataType[index][key] = updateSpecs[key]);
+        (Object.keys(updateSpecs)).slice(1).forEach(key=> dataType[index][key] = updateSpecs[key]);
+        dataType[index].updateTime = new Date();
       }
       else {
         throw [new BlogError('BAD_FIELD', 'unknown '+category+ ' field')];
@@ -204,6 +207,9 @@ export default class Blog544 {
 
 const DEFAULT_COUNT = 5;
 
+function randomIDGenerator() {
+  return ((Math.random() * 100) + 1).toFixed(3);
+}
 function isEmpty(obj) {
   for(let key in obj) {
       if(obj.hasOwnProperty(key))
@@ -279,7 +285,7 @@ function removeArticle(obj,results,rmSpecs) {
 
   if(commentIDs.length > 0) {
     console.log('commentID: '+commentIDs.length);
-    const msg = 'articles '+ rmSpecs['id'] +' referenced by articleId  for comments ' + JSON.stringify(commentIDs);
+    const msg = 'articles '+ rmSpecs['id'] +' referenced by articleId  for comments ' + commentIDs.toString();
     throw [new BlogError('BAD_ID', msg)];
   }
   return true;
