@@ -45,7 +45,7 @@ export default class Validator {
 	errors.push(new BlogError('BAD_FIELD_VALUE', msg));
       }
       else {
-	out[name] = info.data ? info.data(value) : value;
+        out[name] = info.data ? info.data(value) : value;
       }
     } //for
     if (required.size > 0) {
@@ -58,8 +58,12 @@ export default class Validator {
     if (errors.length > 0) throw errors;
     for (const name of optional) { //fill in default value for optional fields
       if (out[name] === undefined && infos[name].defaultFn !== undefined) {
-	out[name] = infos[name].defaultFn();
+        out[name] = infos[name].defaultFn();
       }
+    }
+    if(out.hasOwnProperty('id')){
+      out['_id'] = out['id'];
+      delete out['id'];
     }
     return out;
   }
