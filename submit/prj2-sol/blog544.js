@@ -51,58 +51,40 @@ export default class Blog544 {
     this.users = this.options.users;
     this.articles = this.options.articles;
     this.comments = this.options.comments;
-    /*this.dbName = options.db;*/
-    /*this.indexCollection = {};
-    for(const [category, fields] of Object.entries(meta)) {
-      /!*this.indexCollection[category] = Object.fromEntries(fields.filter(f => f.doIndex).map(f => [[f.name],1]));*!/
-      this.indexCollection[category] = fields.filter(f => f.doIndex).map(f => {return { key : {[f.name] : 1}}});
-    }
-    this.users = this.dbName.collection('users');
-    this.articles = this.dbName.collection('articles');
-    this.comments = this.dbName.collection('comments');
-    this.users.createIndexes(this.indexCollection.users);
-    this.articles.createIndexes(this.indexCollection.articles);
-    this.comments.createIndexes(this.indexCollection.comments);*/
-    /*for(const category of Object.keys(meta)){
-      meta[category].push({
-        name : '_id',
-        friendlyName : 'internal mongo _id',
-        forbidden : ['create', 'find', 'remove', 'update']
-      });
-    }*/
     this.validator = new Validator(meta);
   }
 
 
   /** options.dbUrl contains URL for mongo database */
   static async make(meta, options) {
-    /*const connectionObj = await this.connectToDB(options.dbUrl);*/
     const mongoClient = new mongo.MongoClient(options.dbUrl,MONGO_CONNECT_OPTIONS);
-
     options.client = await mongoClient.connect();
-    options.db = options.client.db('prj2-sol');
-    /*New Try*/
-    let indexCollection = {};
-    for(const [category, fields] of Object.entries(meta)) {
-      /*this.indexCollection[category] = Object.fromEntries(fields.filter(f => f.doIndex).map(f => [[f.name],1]));*/
-      indexCollection[category] = fields.filter(f => f.doIndex).map(f => {return { key : {[f.name] : 1}}});
+    if(options.client !== undefined) {
+      options.db = options.client.db('prj2-sol');
+      /*New Try*/
+      let indexCollection = {};
+      for (const [category, fields] of Object.entries(meta)) {
+        indexCollection[category] = fields.filter(f => f.doIndex).map(f => {
+          return {key: {[f.name]: 1}}
+        });
+      }
+      options.users = options.db.collection('users');
+      options.articles = options.db.collection('articles');
+      options.comments = options.db.collection('comments');
+      await options.users.createIndexes(indexCollection.users);
+      await options.articles.createIndexes(indexCollection.articles);
+      await options.comments.createIndexes(indexCollection.comments);
+      for (const category of Object.keys(meta)) {
+        meta[category].push({
+          name: '_id',
+          friendlyName: 'internal mongo _id',
+          forbidden: ['create', 'find', 'remove', 'update']
+        });
+      }
     }
-    options.users = options.db.collection('users');
-    options.articles = options.db.collection('articles');
-    options.comments = options.db.collection('comments');
-    await options.users.createIndexes(indexCollection.users);
-    await options.articles.createIndexes(indexCollection.articles);
-    await options.comments.createIndexes(indexCollection.comments);
-    for(const category of Object.keys(meta)){
-      meta[category].push({
-        name : '_id',
-        friendlyName : 'internal mongo _id',
-        forbidden : ['create', 'find', 'remove', 'update']
-      });
-    }
-
-
-
+    else{
+        throw [new BlogError('BAD URL', 'Unable to connect to database' )];
+      }
     return new Blog544(meta, options);
   }
 
