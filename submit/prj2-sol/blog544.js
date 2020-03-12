@@ -181,9 +181,9 @@ export default class Blog544 {
       throw [new BlogError('BAD ID', msg)];
     }
     for (const [cat, field] of meta.identifiedBy){
-      const catIDs = (await this.find(cat, {[field]: rmSpecs.id})).map(val => val.id).join(',');
+      const catIDs = (await this.find(cat, {[field]: rmSpecs.id, _count:50})).map(val => val.id).join(',');
       if(catIDs.length > 0){
-        const msg = `${category} ${rmSpecs.id} referenced by ${field}` + `for ${cat} ${catIDs}`;
+        const msg = `${category} ${rmSpecs.id} referenced by ${field}` + ` for ${cat} ${catIDs}`;
         errors.push(new BlogError('BAD_ID', msg));
       }
     }
@@ -206,7 +206,7 @@ export default class Blog544 {
     delete obj['_id'];
     const result = await this.find(category, {id: updateSpecs['id']});
     if(result.length === 0){
-      const msg = `no ${category} for id ${updateSpecs.id} in remove`;
+      const msg = `no ${category} for id ${updateSpecs.id} in update`;
       throw [new BlogError('BAD ID', msg)];
     }
     collectionType.updateOne({'_id': updateSpecs['id']}, {$set: obj}, function (err, result) {
