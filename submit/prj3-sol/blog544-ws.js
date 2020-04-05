@@ -29,17 +29,14 @@ function setupRoutes(app) {
   app.use(bodyParser.json());
   app.get('/', doList(app));
   app.get('/meta', getMeta(app));
-  /*app.get('/users/:id', getData('users',app));
-  app.get('/articles/:id', getData('articles', app));
-  app.get('/comments/:id', getData('comments', app));*/
 
   app.get('/users/:id', getRecordData('users',app));
   app.get('/articles/:id', getRecordData('articles', app));
   app.get('/comments/:id', getRecordData('comments', app));
 
-  app.get(/\/users?\??[^/]*$/, getData('users',app));
-  app.get(/\/articles\/?\??[^/]*$/, getData('articles', app));
-  app.get(/\/comments\/?\??[^/]*$/, getData('comments', app));
+  app.get('/users', getData('users',app));
+  app.get('/articles', getData('articles', app));
+  app.get('/comments', getData('comments', app));
 
   app.post('/users', doCreate('users', app));
   app.post('/articles', doCreate('articles', app));
@@ -64,7 +61,7 @@ function doList(app) {
       let obj = {};
       let requestedLinkType = ["self", "meta", "collections"];
       let collectionArr = Object.keys(app.locals.meta);
-      obj.links = getNextPrevLink(req, requestedLinkType, collectionArr);
+      obj.links = getHATEOASLink(req, requestedLinkType, collectionArr);
       res.json(obj);
     }
     catch (err) {
@@ -81,7 +78,7 @@ function getMeta(app){
         for(const[category, fields] of Object.entries(app.locals.meta)){
           info[category] = fields;
         }
-        info.links = getNextPrevLink(req, ["self"]);
+        info.links = getHATEOASLink(req, ["uniqueLinkForRecord"]);
         res.json(info);
       }
       catch (err) {
@@ -96,14 +93,14 @@ function getData(category, app){
     try{
       let results = {};
       results[category] = await app.locals.model.find(category, req.query);
-      results[category] = results[category].map((val)=> ({...val, links : getNextPrevLink(req, ["uniqueLinkForRecord"], [], "", val.id)}));
-      results.links = getNextPrevLink(req,["self", "nextprev"]);
+      results[category] = results[category].map((val)=> ({...val, links : getHATEOASLink(req, ["uniqueLinkForRecord"], [], "", val.id, 0)}));
+      results.links = getHATEOASLink(req,["self", "nextprev"],[],"","",results[category].length);
       results.links.forEach((val) => {
         if(val.rel !== undefined && val.rel === "prev"){
-          results.prev = getURLparam("_index", val.url);
+          results.prev = getParamsFromURL("_index", val.url);
         }
         if(val.rel !== undefined && val.rel === "next"){
-          results.next = getURLparam("_index", val.url);
+          results.next = getParamsFromURL("_index", val.url);
         }
       });
       await res.json(results);
@@ -120,7 +117,7 @@ function getRecordData(category, app) {
     try{
       let info = {};
       info[category] = await app.locals.model.find(category, req.params);
-      info[category] = info[category].map((val)=> ({...val, links : getNextPrevLink(req, ["self"])}));
+      info[category] = info[category].map((val)=> ({...val, links : getHATEOASLink(req, ["uniqueLinkForRecord"])}));
       await res.json(info);
     }
     catch (err) {
@@ -136,7 +133,7 @@ function doCreate(category, app) {
       const obj = req.body;
       const results = await app.locals.model.create(category, obj);
       res.append('Location', requestUrl(req) + '/'+ results);
-      res.sendStatus(CREATED);
+      res.json({});
     }
     catch (err) {
       const mapped = mapError(err);
@@ -150,7 +147,7 @@ function deleteData(category, app) {
     try{
       const id = req.params.id;
       const results = await app.locals.model.remove(category, {id:id});
-      res.sendStatus(OK);
+      res.json({});
     }
     catch (err) {
       const mapped = mapError(err);
@@ -165,7 +162,7 @@ function updateData(category, app) {
       const patch = Object.assign({}, req.body);
       patch.id = req.params.id;
       const results = await app.locals.model.update(category, patch);
-      res.sendStatus(OK);
+      res.json({});
     }
     catch (err) {
       const mapped = mapError(err);
@@ -233,56 +230,63 @@ function requestUrl(req) {
   return `${req.protocol}://${req.hostname}:${port}${url}`;
 }
 
-function getNextPrevLink(req, requestedLinkType, collectionArr = [], category = "", id = "") {
+function getHATEOASLink(req, requestedLinkType, collectionArr = [], category = "", id = "", resultCount = 0) {
   let obj = [];
   let link = {};
   let paramsObj;
-  requestedLinkType.forEach(function (element) {
-    if(element === "self"){
-      obj.push({rel:"self", name: "self", url: `${req.protocol}://${req.hostname}:${req.app.locals.port}${req.originalUrl}`});
-    }
-    if(element === "meta"){
-      obj.push({url:requestUrl(req) + "/meta", name: "meta", rel: "describeby"});
-    }
-    if(element === "collections"){
-      collectionArr.forEach((category) => obj.push({rel:"collection", name: `${category}`, url: requestUrl(req) + `/${category}`}));
-    }
-    if(element === "uniqueLinkForRecord"){
-      obj.push({href: requestUrl(req) + `/${id}`, name:"self", rel:"self"});
-    }
-    if(element === "nextprev"){
-      const urlstring = req.originalUrl.replace(/\/?(\?.*)?$/, '');
-      if(!req.query.hasOwnProperty('_index') && !req.query.hasOwnProperty('_count')){
-        link.rel = "next";
-        link.name = "next";
-        paramsObj = Object.assign({}, req.query);
-        paramsObj._index = DEFAULT_COUNT;
-        link.url = `${req.protocol}://${req.hostname}:${req.app.locals.port}${urlstring}` + '?' + querystring.stringify(paramsObj);
-        obj.push(link);
+  if(requestedLinkType.length > 0){
+    requestedLinkType.forEach(function (element) {
+      if(element === "self"){
+        obj.push({rel:"self", name: "self", url: `${req.protocol}://${req.hostname}:${req.app.locals.port}${req.originalUrl}`});
       }
-      else if(!req.query.hasOwnProperty('_index')  && req.query.hasOwnProperty('_count')){
-        link.rel = "next";
-        link.name = "next";
-        paramsObj = Object.assign({}, req.query);
-        paramsObj._index = paramsObj._count;
-        link.url = `${req.protocol}://${req.hostname}:${req.app.locals.port}${urlstring}` + '?' + querystring.stringify(paramsObj);
-        obj.push(link);
+      if(element === "meta"){
+        obj.push({url:requestUrl(req) + "/meta", name: "meta", rel: "describeby"});
       }
-      else if(req.query.hasOwnProperty('_index')){
-        paramsObj = Object.assign({}, req.query);
-        let count =
-            paramsObj._count !== undefined? Number(paramsObj._count) : DEFAULT_COUNT;
-        paramsObj._index = (Number(paramsObj._index) + count).toString();
-        obj.push({rel:"next", name:"next", url:`${req.protocol}://${req.hostname}:${req.app.locals.port}${urlstring}` + '?' + querystring.stringify(paramsObj)});
-        paramsObj._index = (Number(paramsObj._index) - (count*2)).toString();
-        obj.push({rel:"prev", name:"prev", url:`${req.protocol}://${req.hostname}:${req.app.locals.port}${urlstring}` + '?' + querystring.stringify(paramsObj)});
+      if(element === "collections"){
+        collectionArr.forEach((category) => obj.push({rel:"collection", name: `${category}`, url: requestUrl(req) + `/${category}`}));
       }
-    }
-  });
+      if(element === "uniqueLinkForRecord"){
+        (id !== "")? obj.push({href: requestUrl(req) + `/${id}`, name:"self", rel:"self"}): obj.push({href: requestUrl(req), name:"self", rel:"self"});
+      }
+      if(element === "nextprev"){
+        const urlstring = req.originalUrl.replace(/\/?(\?.*)?$/, '');
+        if(!req.query.hasOwnProperty('_index') && !req.query.hasOwnProperty('_count')){
+          link.rel = "next";
+          link.name = "next";
+          paramsObj = Object.assign({}, req.query);
+          paramsObj._index = DEFAULT_COUNT;
+          link.url = `${req.protocol}://${req.hostname}:${req.app.locals.port}${urlstring}` + '?' + querystring.stringify(paramsObj);
+          obj.push(link);
+        }
+        else if(!req.query.hasOwnProperty('_index')  && req.query.hasOwnProperty('_count') && resultCount <= req.query._count && resultCount !== 0){
+          link.rel = "next";
+          link.name = "next";
+          paramsObj = Object.assign({}, req.query);
+          paramsObj._index = paramsObj._count;
+          link.url = `${req.protocol}://${req.hostname}:${req.app.locals.port}${urlstring}` + '?' + querystring.stringify(paramsObj);
+          obj.push(link);
+        }
+        else if(req.query.hasOwnProperty('_index')){
+          paramsObj = Object.assign({}, req.query);
+          let count =
+              paramsObj._count !== undefined? Number(paramsObj._count) : DEFAULT_COUNT;
+          if(resultCount <= count && resultCount !== 0){
+            paramsObj._index = (Number(paramsObj._index) + count).toString();
+            obj.push({rel:"next", name:"next", url:`${req.protocol}://${req.hostname}:${req.app.locals.port}${urlstring}` + '?' + querystring.stringify(paramsObj)});
+          }
+          //paramsObj._index = (Number(paramsObj._index) - (count*2)).toString();
+          if(Number(req.query._index) !== 0){
+            paramsObj._index = ((Number(req.query._index) - (count)) >= 0)? (Number(req.query._index) - (count)).toString(): '0';
+            obj.push({rel:"prev", name:"prev", url:`${req.protocol}://${req.hostname}:${req.app.locals.port}${urlstring}` + '?' + querystring.stringify(paramsObj)});
+          }
+        }
+      }
+    });
+  }
   return obj;
 }
 
-function getURLparam(params, url){
+function getParamsFromURL(params, url){
   let href = url;
   let reg = new RegExp('[?&]' + params + '=([^&#]*)', 'i');
   let querystr = reg.exec(href);
@@ -291,4 +295,3 @@ function getURLparam(params, url){
 
 const DEFAULT_COUNT = 5;
 
-//@TODO
