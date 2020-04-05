@@ -73,11 +73,8 @@ function doList(app) {
 
 function getMeta(app){
   return errorWrap(function (req, res) {
-    let info = {};
       try{
-        for(const[category, fields] of Object.entries(app.locals.meta)){
-          info[category] = fields;
-        }
+        let info = Object.assign({}, app.locals.meta);
         info.links = getHATEOASLink(req, ["uniqueLinkForRecord"]);
         res.json(info);
       }
