@@ -94,10 +94,10 @@ function getData(category, app){
       results.links = getHATEOASLink(req,["self", "nextprev"],[],"","",results[category].length);
       results.links.forEach((val) => {
         if(val.rel !== undefined && val.rel === "prev"){
-          results.prev = getParamsFromURL("_index", val.url);
+          results.prev = Number(getParamsFromURL("_index", val.url));
         }
         if(val.rel !== undefined && val.rel === "next"){
-          results.next = getParamsFromURL("_index", val.url);
+          results.next = Number(getParamsFromURL("_index", val.url));
         }
       });
       await res.json(results);
@@ -247,7 +247,7 @@ function getHATEOASLink(req, requestedLinkType, collectionArr = [], category = "
       }
       if(element === "nextprev"){
         const urlstring = req.originalUrl.replace(/\/?(\?.*)?$/, '');
-        if(!req.query.hasOwnProperty('_index') && !req.query.hasOwnProperty('_count')){
+        if(!req.query.hasOwnProperty('_index') && !req.query.hasOwnProperty('_count') && resultCount >= DEFAULT_COUNT){
           link.rel = "next";
           link.name = "next";
           paramsObj = Object.assign({}, req.query);
@@ -255,7 +255,7 @@ function getHATEOASLink(req, requestedLinkType, collectionArr = [], category = "
           link.url = `${req.protocol}://${req.hostname}:${req.app.locals.port}${urlstring}` + '?' + querystring.stringify(paramsObj);
           obj.push(link);
         }
-        else if(!req.query.hasOwnProperty('_index')  && req.query.hasOwnProperty('_count') && resultCount <= req.query._count && resultCount !== 0){
+        else if(!req.query.hasOwnProperty('_index')  && req.query.hasOwnProperty('_count') && resultCount >= req.query._count && resultCount !== 0){
           link.rel = "next";
           link.name = "next";
           paramsObj = Object.assign({}, req.query);
@@ -267,11 +267,10 @@ function getHATEOASLink(req, requestedLinkType, collectionArr = [], category = "
           paramsObj = Object.assign({}, req.query);
           let count =
               paramsObj._count !== undefined? Number(paramsObj._count) : DEFAULT_COUNT;
-          if(resultCount <= count && resultCount !== 0){
+          if(resultCount >= count && resultCount !== 0){
             paramsObj._index = (Number(paramsObj._index) + count).toString();
             obj.push({rel:"next", name:"next", url:`${req.protocol}://${req.hostname}:${req.app.locals.port}${urlstring}` + '?' + querystring.stringify(paramsObj)});
           }
-          //paramsObj._index = (Number(paramsObj._index) - (count*2)).toString();
           if(Number(req.query._index) !== 0){
             paramsObj._index = ((Number(req.query._index) - (count)) >= 0)? (Number(req.query._index) - (count)).toString(): '0';
             obj.push({rel:"prev", name:"prev", url:`${req.protocol}://${req.hostname}:${req.app.locals.port}${urlstring}` + '?' + querystring.stringify(paramsObj)});
