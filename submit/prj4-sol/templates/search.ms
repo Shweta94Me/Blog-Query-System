@@ -28,6 +28,6 @@
       <input name="submit" type="submit" value="search" class="control">
     </form>
     {{>footer}}
-    <script src="/js/min-user-id-chk.js"></script>
+    <script src="/js/user-id-chk.js"></script>
   </body>
 </html>
