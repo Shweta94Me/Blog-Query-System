@@ -5,3 +5,7 @@ Email:		smestry1@binghamton.edu
 Refer one website to fetch querystring parameters from URL.
 https://dev.to/ganeshmani/how-to-get-query-string-parameters-in-javascript-2019-4dm2
 
+Implemented below functionalities:
+1. REST based web service
+2. Express.js framwork
+3. HATEOAS
