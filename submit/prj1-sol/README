@@ -7,7 +7,7 @@ Working code. Satisfies given log file.
 Description for Prj1-Sol:
 This project involves reading and querying blog data stored entirely in memory. The data is organized in three categories:
 Users The people associated with the blog. Each person can have one-or-more roles of admin, author or commenter (the admin role is not used in this project). Each user is identified using an externally generated id.
-Articles The blog articles. Will have title and content fields, an authorId fields identifying the author and a list of keywords. Each article is identied using an internally generated id.
+Articles The blog articles. Will have title and content fields, an authorId fields identifying the author and a list of keywords. Each article is identified using an internally generated id.
 Comments Comments associated with each blog article. A comment will have associated content. A comment will be associated with its corresponding article using its articleId fields and its commenter using its commenterId field. Each article is identified using an internally generated id.
 All data item in each category have creationTime and updateTime timestamps.
 It is possible to perform the following actions on the blog:
