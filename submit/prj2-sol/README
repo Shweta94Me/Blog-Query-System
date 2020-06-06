@@ -4,3 +4,15 @@ Email:		smestry1@binghamton.edu
 
 I have taken a reference from provided prj1-sol solution.
 
+Files:
+blog544.js This skeleton file constitutes the guts of the project. 
+index.js This file provides the complete command-line behavior which is required by the program. It requires blog544.js. 
+meta.js Meta-information about the different blog object categories. 
+blog-error.js A trival class for application errors.
+validator.js Validation code from the previous project. It provides generic validation based on types for input parameters. More validation will be necessary, especially for validation across objects.
+
+MongoDB:
+Used MongoDB to provide basic CRUD operations.
+All asynchronous mongo library functions can be called directly using await.
+Mongo db indexes are used to facilitate search.
+
